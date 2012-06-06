@@ -49,12 +49,12 @@ Proof.
   intros s1 s2 s3 H1 H2 ; inv H1 ; inv H2 ; auto.
 Qed.
 
-Hint Resolve sec_ordering_trans.
-
 Remark subtype_refl : forall T, subtype T T.
 Proof.
   intros T ; induction T ; auto.
 Qed.
+
+Hint Resolve sec_ordering_trans subtype_refl.
 
 Remark subtype_trans : forall T1 T2 T3, subtype T1 T2 -> subtype T2 T3 -> subtype T1 T3.
 Proof.
@@ -63,7 +63,20 @@ Proof.
   induction T2 ; intros ; inv H ; try solve by inversion ; try (inv H0) ; eauto.
 Qed.
 
-Hint Resolve subtype_refl subtype_trans.
+Remark sec_ordering_lub : forall s s', sec_ordering s (lub_secty s' s).
+Proof with eauto.
+  intros s s' ; destruct s ; destruct s' ...
+Qed.
+
+Remark update_secty__subtype : forall T s, subtype T (update_secty T s).
+Proof with eauto.
+  intros T. induction T ; intros s1.
+  destruct s ; destruct s1 ; simpl ...
+  apply s_arrow ...
+  apply sec_ordering_lub.
+Qed.
+ 
+Hint Resolve subtype_trans update_secty__subtype.
 
 (** some simple examples **)
 

@@ -6,7 +6,7 @@ Reserved Notation "t '==>' t'" (at level 40).
 
 Fixpoint subst (x : id) (t : term) (t' : term) : term :=
   match t' with
-    | tm_var i => if eq_id_dec x i then t else t'
+    | tm_var i => if beq_id x i then t else t'
     | tm_app l r => tm_app (subst x t l) (subst x t r)
     | tm_abs x T t1 => tm_abs x T (subst x t t1)
     | tm_trust t1 => tm_trust (subst x t t1)
