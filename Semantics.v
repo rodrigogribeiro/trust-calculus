@@ -4,16 +4,17 @@ Require Import SfLib Syntax.
 
 Reserved Notation "t '==>' t'" (at level 40).
 
-Fixpoint subst (x : id) (t : term) (t' : term) : term :=
+Fixpoint subst (x : id) (t : term) (t' : term) {struct t'} : term :=
   match t' with
     | tm_var i => if beq_id x i then t else t'
     | tm_app l r => tm_app (subst x t l) (subst x t r)
-    | tm_abs x T t1 => tm_abs x T (subst x t t1)
+    | tm_abs i T t1 => tm_abs i T (if beq_id x i then t1 else (subst x t t1))
     | tm_trust t1 => tm_trust (subst x t t1)
     | tm_distrust t1 => tm_distrust (subst x t t1)
     | tm_check t1 => tm_check (subst x t t1)
     | tm_if t1 t2 t3 => tm_if (subst x t t1) (subst x t t2) (subst x t t3)
-    | _              => t'
+    | tm_true        => tm_true
+    | tm_false       => tm_false
   end.
 
 Inductive bvalue : term -> Prop :=

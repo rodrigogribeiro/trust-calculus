@@ -3,8 +3,9 @@ Require Import SfLib Ty.
 (** definition of ordering between types **)
 
 Inductive sec_ordering : secty -> secty -> Prop :=
-  | so_dontcare : forall t, sec_ordering t DontCare 
+  | so_untrustdontcare : sec_ordering Untrust DontCare 
   | so_trustuntrust : sec_ordering Trust Untrust
+  | so_trustdontcare : sec_ordering Trust DontCare
   | so_refl : forall t, sec_ordering t t.
 
 Inductive subtype : ty -> ty -> Prop :=
@@ -75,6 +76,21 @@ Proof with eauto.
   apply s_arrow ...
   apply sec_ordering_lub.
 Qed.
+
+Remark update_secty_ident : forall T s, update_secty T s = update_secty (update_secty T s) s.
+Proof.
+  intros T s.
+  induction T ; simpl.  
+  destruct s ; destruct s0 ; simpl ; auto.
+  destruct s ; destruct s0 ; simpl ; auto.
+Qed.
+
+Remark secty_update_eq :forall T T' s, subtype T T' -> sectyof T = sectyof (update_secty T s) -> sectyof T' = sectyof (update_secty T' s).
+Proof.
+  intros T T' s Hsub ; generalize dependent s ; induction Hsub ; intros ; simpl in *.
+  rewrite H0 in H ; destruct s0 ; destruct s ; simpl in * ; destruct s' ; try solve by inversion ; auto.
+  rewrite H0 in H ; destruct s1 ; destruct s ; simpl in * ; destruct s2 ; try solve by inversion ; auto.
+Qed.
  
 Hint Resolve subtype_trans update_secty__subtype.
 
@@ -99,6 +115,5 @@ Qed.
 
 Example test_subtype2 : subtype BoolT BoolD.
 Proof.
-  apply s_base.
-  apply so_dontcare.  
+  apply s_base ; auto. 
 Qed.

@@ -11,12 +11,11 @@ Inductive has_type : context -> term -> ty -> Prop :=
   | T_Abs : forall ctx x t2 T1 T2, 
         has_type (extend ctx x T1) t2 T2 ->
         has_type ctx (tm_abs x T1 t2) (arrow T1 T2 Trust)
-  | T_App : forall ctx t1 t2 T11 T11' T12 s u, 
+  | T_App : forall ctx t1 t2 T11 T11' T12 s, 
         has_type ctx t1 (arrow T11 T12 s) -> 
         has_type ctx t2 T11' ->
         subtype T11' T11     ->
-        u = update_secty T12 s -> 
-        has_type ctx (tm_app t1 t2) u
+        has_type ctx (tm_app t1 t2) (update_secty T12 s)
   | T_If : forall ctx t1 t2 t3 T s,
         has_type ctx t1 (ty_bool s) ->
         has_type ctx t2 T     ->
@@ -156,16 +155,16 @@ Qed.
 
 Lemma typing_inversion_abs : 
   forall ctx x S1 s2 T, has_type ctx (tm_abs x S1 s2) T ->
-    exists S2, exists s, subtype (arrow S1 S2 s) T /\
+    exists S2,  subtype (arrow S1 S2 Trust) T /\
       has_type (extend ctx x S1) s2 S2.
 Proof with eauto.
   intros ctx x S1 s2 T H.
   remember (tm_abs x S1 s2) as t.
   has_type_cases (induction H) Case ; inv Heqt ; intros ; try solve by inversion.
   Case "T_Abs".
-    exists T2 ; exists Trust ; split ...   
+    exists T2 ; split ...   
   Case "T_Sub".
-    destruct IHhas_type as [S2 [s' [H1 H2]]] ...
+    destruct IHhas_type as [S2 [H1 H2]] ...
 Qed.
 
 Lemma typing_inversion_var : 
@@ -204,22 +203,24 @@ Qed.
 
 Lemma typing_inversion_app :
   forall ctx t1 t2 T2, has_type ctx (tm_app t1 t2) T2 ->
-    exists T1, exists s, has_type ctx t1 (arrow T1 T2 s) /\ has_type ctx t2 T1.
+    exists T1, exists T11, exists s, 
+      has_type ctx t1 (arrow T1 T2 s) /\ has_type ctx t2 T11 /\ subtype T11 T1 /\ sectyof T2 = sectyof (update_secty T2 s).
 Proof with eauto.
   intros ctx t1 t2 T2 Hty.
   remember (tm_app t1 t2) as t.
   has_type_cases (induction Hty) Case ; intros ; inv Heqt ; try solve by inversion ...
   Case "T_App".
-    repeat eexists ...
+    repeat eexists...
+    rewrite <- update_secty_ident ...
   Case "T_Sub".
     destruct IHHty ...
-    destruct H0 as [s [H1 H2]].
-    repeat eexists ...   
+    destruct H0 as [T11 [s [H1 [H2 [H3 H4]]]]].
+    repeat eexists ... eapply secty_update_eq ...
 Qed.
 
 Lemma typing_inversion_trust : 
   forall ctx t T, has_type ctx (tm_trust t) T ->
-    exists T', has_type ctx t T' /\ subtype T' T.
+    exists T', has_type ctx t T' /\ subtype (update_secty T' Trust) T.
 Proof with eauto.
    intros ctx t T Hty.
    remember (tm_trust t) as V.
@@ -232,7 +233,7 @@ Qed.
 
 Lemma typing_inversion_distrust :
   forall ctx t T, has_type ctx (tm_distrust t) T ->
-    exists T', has_type ctx t T' /\ subtype T' T.
+    exists T', has_type ctx t T' /\ subtype (update_secty T' Untrust) T.
 Proof with eauto.
   intros ctx t T Hty.
   remember (tm_distrust t) as V.
@@ -245,7 +246,7 @@ Qed.
 
 Lemma typing_inversion_check : 
   forall ctx t T, has_type ctx (tm_check t) T ->
-    exists T', has_type ctx t T' /\ subtype T' T.
+    exists T', has_type ctx t T' /\ subtype T' T /\ sectyof T' = Trust.
 Proof with eauto.
   intros ctx t T Hty.
   remember (tm_check t) as V.
@@ -253,8 +254,7 @@ Proof with eauto.
   Case "T_Check".
     eexists ; split ...
   Case "T_Sub".
-    eexists ; split ...
-    destruct IHHty as [ty [H1 H2]]...
+    destruct IHHty as [T1 [H1 [H2 H3]]] ...
 Qed.
 
 Lemma typing_inversion_if :
@@ -267,6 +267,19 @@ Proof with eauto.
   Case "T_Sub".
     destruct IHHty as [s [H1 [H2 H3]]] ...
     eexists ; repeat split ...
+Qed.
+
+Lemma abs_arrow : 
+  forall x S1 s2 T1 T2 s,
+    has_type empty (tm_abs x S1 s2) (arrow T1 T2 s) ->
+    subtype T1 S1 /\ has_type (extend empty x S1) s2 T2.
+Proof with eauto.
+  intros x S1 s2 T1 T2 s Hty.
+  apply typing_inversion_abs in Hty.
+  destruct Hty as [S2 [H1 H2]].
+  apply sub_inversion_arrow in H1.
+  destruct H1 as [s' [T1' [T2' [H3 [H4 [H5 H6]]]]]].
+  inv H3 ...
 Qed.
 
 (** context invariance **)
@@ -334,37 +347,73 @@ Qed.
 Hint Resolve typing_inversion_false typing_inversion_true.
 
 Lemma substitution_preserves_typing : 
-  forall ctx i T v t T',
-    has_type (extend ctx i T) t T' ->
-    has_type empty v T ->
-    has_type ctx (subst i v t) T'.
+  forall Gamma x U v t S,
+    has_type (extend Gamma x U) t S ->
+    has_type empty v U ->
+    has_type Gamma (subst x v t) S.
 Proof with eauto.
-  intros ctx i T v t T' Hty' Htyv.
-  generalize dependent T'. generalize dependent ctx.
-  term_cases (induction t) Case ; intros ; simpl  ...
+  intros Gamma x U v t S Htypt Htypv.
+  generalize dependent S ; generalize dependent Gamma.
+  term_cases (induction t) Case ; intros ; simpl.
+  Case "tm_false".
+     apply typing_inversion_false in Htypt.
+     eapply T_Sub...
+  Case "tm_true".
+     apply typing_inversion_true in Htypt.
+     eapply T_Sub ...
   Case "tm_if".
-    apply typing_inversion_if in Hty'.
-    destruct Hty' as [s [H1 [H2 H3]]].
-    apply IHt1 in H1.
-    apply IHt2 in H2.
-    apply IHt3 in H3.
-    eapply T_If ...
+     assert (exists s, has_type (extend Gamma x U) t1 (ty_bool s) /\ 
+                       has_type (extend Gamma x U) t2 S /\ 
+                       has_type (extend Gamma x U) t3 S)
+       by apply (typing_inversion_if _ _ _ _ _ Htypt)...
+     destruct H as [s [H1 [H2 H3]]]...
   Case "tm_var".
-    rename i into y.
-    apply typing_inversion_var in Hty'.
-    destruct Hty' as [S [H1 H2]].
-    unfold extend in *. 
-    remember (beq_id y i0) as e ; destruct e.
-    SCase "i = i0".
-      apply beq_id_eq in Heqe. subst. inv H1.
-    apply T_Sub with S.
-    apply context_invariance with empty ... intros x contra.
-    destruct (free_in_context _ empty _ S contra) as [T1 HT1]... 
-    inv HT1. auto. eapply T_Sub ...
-  Case "tm_app".
-    destruct (typing_inversion_app _ _ _ _ Hty') as [S [s [Hty1 Hty2]]] ...
-    eapply T_App ...
-
+     destruct (typing_inversion_var _ _ _ Htypt) as [T [H1 H2]].
+     unfold extend in H1.
+     remember (beq_id x i) as e ; destruct e.
+     SCase "x = i".
+       apply beq_id_eq in Heqe ; inv H1.
+       apply context_invariance with empty ...
+       intros x contra.
+       destruct (free_in_context _ empty _ T contra) ...      
+       inv H.
+     SCase "x <> i".
+       symmetry in Heqe.
+       apply beq_id_false_not_eq in Heqe.
+       apply T_Sub with T ...
+   Case "tm_app".
+     destruct (typing_inversion_app _ _ _ _ Htypt) as [T1 [T11 [s [H1 [H2 [H3 H4]]]]]].  
+     apply IHt1 in H1.
+     apply IHt2 in H2.
+     eapply T_Sub.  
+     eapply T_App...
+     destruct S ; simpl in * ; rewrite <- H4 ...
+   Case "tm_abs".
+     rename i into y. rename t into T1.
+     destruct (typing_inversion_abs _ _ _ _ _ Htypt) as [T2 [H1 H2]].
+     apply T_Sub with (arrow T1 T2 Trust)... apply T_Abs...
+     remember (beq_id x y) as e ; destruct e.
+     SCase "x = y".
+       eapply context_invariance ...       
+       apply beq_id_eq in Heqe ; subst.
+       intros x0 Hafi ; unfold extend.
+       destruct (beq_id y x0) ...
+     SCase "x <> y".
+       apply IHt. eapply context_invariance ...
+       intros z Hafi. unfold extend.
+       remember (beq_id y z) as e1 ; destruct e1...
+       apply beq_id_eq in Heqe1. subst. rewrite <- Heqe ...
+   Case "tm_trust".
+     destruct (typing_inversion_trust _ _ _ Htypt) as [T [H1 H2]].
+     apply T_Sub with (update_secty T Trust) ...
+   Case "tm_distrust".
+     destruct (typing_inversion_distrust _ _ _ Htypt) as [T [H1 H2]].
+     apply T_Sub with (update_secty T Untrust) ...
+   Case "tm_check".
+     destruct (typing_inversion_check _ _ _ Htypt) as [T [H1 [H2 H3]]].
+     eapply T_Sub...
+Qed.
+     
 (** preservation **)
 
 Theorem preservation : 
@@ -374,6 +423,9 @@ Proof with eauto.
  intros t t' T HT.
  remember (@empty ty) as ctx. generalize dependent Heqctx.
  generalize dependent t'.
- has_type_cases (induction HT) Case ; intros t' Heqctx HE ; try solve by inversion...
- inv HE ...
+ has_type_cases (induction HT) Case ; intros t' Heqctx HE ; inv HE...
+ Case "T_App".
+   SCase "ST_AppAbs".
+     destruct (abs_arrow _ _ _ _ _ _ HT1) as [HA1 HA2].
+     apply substitution_preserves_typing with T ...
 Qed.
