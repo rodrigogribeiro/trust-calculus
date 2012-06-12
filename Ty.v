@@ -1,6 +1,6 @@
 (** Definition of types **)
 
-Require Import SfLib.
+Require Import SfLib MinMax.
 
 Inductive secty : Type := Trust : secty | Untrust : secty | DontCare : secty.
 
@@ -22,3 +22,13 @@ Tactic Notation "ty_cases" tactic(first) ident(c) :=
   first ; [Case_aux c "base" | Case_aux c "arrow"].
 
 Definition context := partial_map ty.
+
+(** definition of a type size,
+    this is used to ensure termination
+    of subtyping algorithm **)
+
+Fixpoint ty_size (T : ty) : nat :=
+  match T with
+    | arrow l r _ => 1 + (ty_size l) + (ty_size r)
+    | _           => 0
+  end.
