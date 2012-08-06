@@ -1,8 +1,6 @@
 (** definition of the small step semantics *)
 
-Require Import SfLib Syntax.
-
-Reserved Notation "t '==>' t'" (at level 40).
+Require Import Utils Syntax.
 
 Fixpoint subst (x : id) (t : term) (t' : term) {struct t'} : term :=
   match t' with
@@ -12,29 +10,23 @@ Fixpoint subst (x : id) (t : term) (t' : term) {struct t'} : term :=
     | tm_trust t1 => tm_trust (subst x t t1)
     | tm_distrust t1 => tm_distrust (subst x t t1)
     | tm_check t1 => tm_check (subst x t t1)
-    | tm_if t1 t2 t3 => tm_if (subst x t t1) (subst x t t2) (subst x t t3)
     | tm_true        => tm_true
     | tm_false       => tm_false
   end.
 
-Inductive bvalue : term -> Prop :=
-  | v_true : bvalue tm_true | v_false : bvalue tm_false.
+Inductive value : term -> Prop := 
+  | v_true : value tm_true
+  | v_false : value tm_false 
+  | v_abs : forall x T t12, value (tm_abs x T t12).
 
-Inductive absvalue : term -> Prop :=
-  | v_abs : forall x T t12, absvalue (tm_abs x T t12).
+Hint Constructors value.
 
-Definition value (t : term) : Prop := bvalue t \/ absvalue t.
-
-Hint Constructors bvalue absvalue.
-Hint Unfold value.
+Reserved Notation "e '==>' e'" (at level 40).
 
 Inductive step : term -> term -> Prop :=
   | e_appabs : forall x T t12 v2, value v2 -> (tm_app (tm_abs x T t12) v2) ==> subst x v2 t12
   | e_app1   : forall t1 t1' t2, t1 ==> t1' -> tm_app t1 t2 ==> tm_app t1' t2
   | e_app2   : forall v1 t2 t2', value v1 -> t2 ==> t2' -> tm_app v1 t2 ==> tm_app v1 t2'
-  | e_iftrue : forall t2 t3, tm_if tm_true t2 t3 ==> t2
-  | e_iffalse : forall t2 t3, tm_if tm_false t2 t3 ==> t3
-  | e_if : forall t1 t1' t2 t3, t1 ==> t1' -> tm_if t1 t2 t3 ==> tm_if t1' t2 t3
   (** other rules **)
   | e_trust1 : forall t1 t1', t1 ==> t1' -> tm_trust t1 ==> tm_trust t1'
   | e_distrust1 : forall t1 t1', t1 ==> t1' -> tm_distrust t1 ==> tm_distrust t1'
@@ -46,20 +38,38 @@ Inductive step : term -> term -> Prop :=
 
 Hint Constructors step.
 
-Remark value_dont_step : forall t, value t -> ~ exists t', t ==> t'.
+Definition normal_form {X:Type} (R:relation X) (t:X) : Prop :=
+   ~ (exists t', R t t').
+
+Definition step_normal_form := normal_form step.
+
+Hint Unfold normal_form step_normal_form.
+
+Remark value_dont_step : forall t, value t -> step_normal_form t.
 Proof.
-  intros t H Hc ;
-  inv H ; inv H0 ; destruct Hc ; solve by inversion.
+  intros t H Hc ; unfold step_normal_form, normal_form in *.
+  inv H ; destruct Hc ; solve by inversion.
 Qed.
 
 Ltac s := f_equal ; eauto ;
-  match goal with
-    | [H : value ?X, H1 : ?X ==> _ |- _] =>
-        apply value_dont_step in H ; elim H ; eexists 
-  end.
+  try (match goal with
+         | [H : value ?X, H1 : ?X ==> _ |- _] =>
+           apply value_dont_step in H
+         | [H : False |- _] => elim H
+         | [H : ~ _ |- _] => elim H
+         | [ |- ex _] => eexists ; eauto ; fail
+       end) ; try solve by inversion ; unfold step_normal_form, normal_form in *.
 
 Lemma step_deterministic : forall t t', t ==> t' -> forall t'', t ==> t'' -> t' = t''.
-Proof.
-   induction 1 ; intros t'' H2 ; inv H2 ;
-   try solve by inversion ; repeat s.
+Proof with eauto.
+   intros t t' H ; induction H ; intros t' H2 ; inv H2 ; repeat s.
 Qed.
+
+
+(** multi step semantics **)
+
+Definition multi_step := refl_step_closure step.
+
+Notation "t '==>*' v" := (multi_step t v) (at level 40).
+
+

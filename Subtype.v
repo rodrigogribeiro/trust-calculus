@@ -1,11 +1,9 @@
-Require Import SfLib Ty.
+Require Import Utils Ty.
 
 (** definition of ordering between types **)
 
 Inductive sec_ordering : secty -> secty -> Prop :=
-  | so_untrustdontcare : sec_ordering Untrust DontCare 
   | so_trustuntrust : sec_ordering Trust Untrust
-  | so_trustdontcare : sec_ordering Trust DontCare
   | so_refl : forall t, sec_ordering t t.
 
 Inductive subtype : ty -> ty -> Prop :=
@@ -29,15 +27,33 @@ Definition sectyof (t : ty) : secty :=
 
 (** least upper bound on sec types **)
 
-Definition lub_secty (x y : secty) : secty :=
-  match x with
-    | DontCare => DontCare
-    | Trust    => y
-    | Untrust  => match y with
-                    | DontCare => DontCare
-                    | _        => Untrust     
-                  end
-  end.
+Section LUB_SECTY.
+  Definition lub_secty (x y : secty) : secty :=
+    match x with
+      | Trust    => y
+      | Untrust  => Untrust
+    end.
+
+  Remark lub_unique : forall s s' s1, lub_secty s s' = s1 -> forall s2, lub_secty s s' = s2 -> s1 = s2.
+  Proof.
+    intros s s' s1 Hs1 s2 Hs2 ; destruct s ; destruct s' ; subst ; auto.
+  Qed.
+  
+  Remark lub_secty_sym : forall s s', lub_secty s s' = lub_secty s' s.
+  Proof.
+    intros s s'; destruct s ; destruct s' ; auto.
+  Qed.
+
+  Remark subtype_bool_lub_secty : forall s s', subtype (ty_bool s) (ty_bool (lub_secty s s')).
+  Proof.
+    intros s s' ; destruct s ; destruct s' ; simpl ; auto.
+  Qed.
+
+  Remark sec_ordering_lub2 : forall s1 s2 s3, sec_ordering s1 s3 -> sec_ordering s2 s3 -> sec_ordering (lub_secty s1 s2) s3.
+  Proof.
+    intros s1 s2 s3 H1 H2 ; destruct s1 ; destruct s2 ; simpl ; auto.
+  Qed.
+End LUB_SECTY.    
 
 Definition update_secty (t : ty) (s : secty) : ty :=
   match t with
@@ -88,32 +104,23 @@ Qed.
 Remark secty_update_eq :forall T T' s, subtype T T' -> sectyof T = sectyof (update_secty T s) -> sectyof T' = sectyof (update_secty T' s).
 Proof.
   intros T T' s Hsub ; generalize dependent s ; induction Hsub ; intros ; simpl in *.
-  rewrite H0 in H ; destruct s0 ; destruct s ; simpl in * ; destruct s' ; try solve by inversion ; auto.
-  rewrite H0 in H ; destruct s1 ; destruct s ; simpl in * ; destruct s2 ; try solve by inversion ; auto.
+  destruct s' ; destruct s ; simpl in * ; destruct s0 ; try solve by inversion ; auto.
+  destruct s1 ; destruct s ; simpl in * ; destruct s2 ; try solve by inversion ; auto.
 Qed.
- 
-Hint Resolve subtype_trans update_secty__subtype.
 
-(** some simple examples **)
-
-Definition BoolT := ty_bool Trust.
-Definition BoolD := ty_bool DontCare.
-
-Definition t1 := arrow BoolD BoolT Trust.
-Definition t2 := arrow BoolT BoolT Trust.
-
-Example test_subtype1 : subtype t1 t2.
+Remark update_secty_mono : forall T T' s s', subtype T T' -> sec_ordering s s' -> subtype (update_secty T s) (update_secty T' s').
 Proof.
-  unfold t1, t2, BoolT, BoolD.
-  apply s_arrow.
-  apply s_base.  
-  auto.
-  apply s_base.
-  apply so_refl.
-  apply so_refl.
+  intros T T' s s' Hsub Hsec ; induction Hsub ; inv Hsec ; 
+    try repeat 
+      (match goal with
+           | [s : secty |- _] => destruct s
+       end) ; simpl ; try solve by inversion ; auto.
 Qed.
 
-Example test_subtype2 : subtype BoolT BoolD.
+Remark subtype_trust_secty : forall T T', subtype T T' -> sectyof T' = Trust -> sectyof T = Trust.
 Proof.
-  apply s_base ; auto. 
+  intros T T' H ; induction H ; intros. inv H ; try solve by inversion ; auto.
+  simpl in *. subst. inv H1. auto.
 Qed.
+
+Hint Resolve subtype_trans update_secty__subtype subtype_trust_secty.
