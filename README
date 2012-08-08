@@ -1,0 +1,10 @@
+Mechanized Metatheory for a Lambda-Calculus with Trust Types.
+
+This is a formalization, in Coq proof assistant, of a Church-style type system for a lambda-calculus with
+trust types as proposed in "Trust in lambda-calculus.". The formalization includes:
+1 - A type soundness proof using a small-step call-by-value semantics.
+2 - Proof of the erasure and simulation theorems.
+3 - Definition of syntax directed type system and a proof of its sound and completeness with
+    relation to the original type system (i.e. the one published in "Trust in lambda-calculus").
+4 - Proof of the decidability of the typing problem given by the syntax directed type system.
+    From this proof, is possible to extract a certified typechecker for the language.

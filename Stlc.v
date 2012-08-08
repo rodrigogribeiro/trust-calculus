@@ -53,24 +53,6 @@ Definition stlc_multi_step := refl_step_closure stlc_step.
 
 Notation "t '==>s*' t'" := (stlc_multi_step t t') (at level 40).
 
-Remark value_dont_step : forall t, stlc_value t -> ~ exists t', t ==>s t'.
-Proof.
-  intros t H Hc ;
-  inv H ; inv H0 ; destruct Hc ; solve by inversion.
-Qed.
-
-Ltac s := f_equal ; eauto ;
-  match goal with
-    | [H : stlc_value ?X, H1 : ?X ==>s _ |- _] =>
-        apply value_dont_step in H ; elim H ; eexists 
-  end.
-
-Lemma step_deterministic : forall t t', t ==>s t' -> forall t'', t ==>s t'' -> t' = t''.
-Proof.
-   induction 1 ; intros t'' H2 ; inv H2 ;
-   try solve by inversion ; repeat s.
-Qed.
-
 (** typing **)
 
 Definition stlc_context := finite_map stlc_ty.

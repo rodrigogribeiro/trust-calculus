@@ -66,9 +66,9 @@ Proof.
      [subst ; elim n ; auto | idtac] ; contradiction.
 Qed.
 
-Lemma extend_lookup : forall x (t : ty) g, lookup x (extend x t g) = Some t.
+Lemma extend_lookup : forall {A : Type} x (t : A) g, lookup x (extend x t g) = Some t.
 Proof.
-  intros x t g. induction g.
+  intros A x t g. induction g.
   simpl. remember (eq_id_dec x x) as e. destruct e ; auto.
   elim n ; auto.
   destruct a. simpl.
@@ -79,9 +79,9 @@ Proof.
   inv Heqe.
 Qed.
 
-Lemma extend_lookup_neq : forall i i' (t : ty) g, i <> i' -> lookup i (extend i' t g) = lookup i g.
+Lemma extend_lookup_neq : forall {A : Type} i i' (t : A) g, i <> i' -> lookup i (extend i' t g) = lookup i g.
 Proof.
-  intros i i' t g He.
+  intros A i i' t g He.
   induction g. simpl.
   remember (eq_id_dec i i') as e ; destruct e ; auto.
   unfold not in He. contradiction.
@@ -93,9 +93,9 @@ Proof.
   simpl. remember (eq_id_dec i i0) as e2 ; destruct e2 ; subst ; auto.
 Qed.
 
-Lemma extend_override : forall i i' (t t' : ty) g, lookup i (extend i' t (extend i' t' g)) = lookup i (extend i' t g).
+Lemma extend_override : forall {A : Type} i i' (t t' : A) g, lookup i (extend i' t (extend i' t' g)) = lookup i (extend i' t g).
 Proof.
-  intros i i' t t' g.
+  intros A i i' t t' g.
   induction g ; simpl ; auto.
   remember (eq_id_dec i' i') as e ; destruct e ; subst ; auto ; try solve by inversion.
   remember (eq_id_dec i i') as e' ; destruct e' ; subst ; auto ; try solve by inversion.
@@ -109,10 +109,10 @@ Proof.
   simpl. rewrite <- Heqe0. auto.
 Qed.
 
-Lemma extend_swap_neq : forall x i i' (t t' : ty) g, i <> i' -> 
+Lemma extend_swap_neq : forall {A : Type} x i i' (t t' : A) g, i <> i' -> 
      lookup x (extend i t (extend i' t' g)) = lookup x (extend i' t' (extend i t g)).
 Proof.
-  intros x i i' t t' g Heq.
+  intros A x i i' t t' g Heq.
   induction g. simpl.
   remember (eq_id_dec i i') as e ; destruct e ; subst ; auto.
   elim Heq ; auto. remember (eq_id_dec i' i)  as e' ; destruct e' ; subst ; auto.
