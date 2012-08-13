@@ -37,7 +37,3 @@ lookup x gamma =
        Prelude.True -> Datatypes.Some t';
        Prelude.False -> lookup x gam}}}
 
-eq_rew_r_dep :: a1 -> a1 -> a2 -> a2
-eq_rew_r_dep x y hC =
-  hC
-

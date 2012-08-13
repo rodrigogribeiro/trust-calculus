@@ -1,6 +1,6 @@
 (** Definition of types **)
 
-Require Import Utils MinMax.
+Require Import Utils.
 
 Inductive secty : Type := Trust : secty | Untrust : secty.
 

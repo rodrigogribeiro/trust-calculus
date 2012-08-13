@@ -14,14 +14,14 @@ zerop n =
 
 lt_eq_lt_dec :: Datatypes.Coq_nat -> Datatypes.Coq_nat -> Prelude.Maybe
                 Prelude.Bool
-lt_eq_lt_dec n =
-  Datatypes.nat_rec (\m ->
-    case m of {
+lt_eq_lt_dec n m =
+  Datatypes.nat_rec (\m0 ->
+    case m0 of {
      Datatypes.O -> Prelude.Just Prelude.False;
-     Datatypes.S m0 -> Prelude.Just Prelude.True}) (\n0 iHn m ->
-    case m of {
+     Datatypes.S m1 -> Prelude.Just Prelude.True}) (\n0 iHn m0 ->
+    case m0 of {
      Datatypes.O -> Prelude.Nothing;
-     Datatypes.S m0 -> iHn m0}) n
+     Datatypes.S m1 -> iHn m1}) n m
 
 gt_eq_gt_dec :: Datatypes.Coq_nat -> Datatypes.Coq_nat -> Prelude.Maybe
                 Prelude.Bool
@@ -29,13 +29,13 @@ gt_eq_gt_dec n m =
   lt_eq_lt_dec n m
 
 le_lt_dec :: Datatypes.Coq_nat -> Datatypes.Coq_nat -> Prelude.Bool
-le_lt_dec n =
-  Datatypes.nat_rec (\m -> Prelude.True) (\n0 iHn m ->
-    case m of {
+le_lt_dec n m =
+  Datatypes.nat_rec (\m0 -> Prelude.True) (\n0 iHn m0 ->
+    case m0 of {
      Datatypes.O -> Prelude.False;
-     Datatypes.S m0 ->
-      Specif.sumbool_rec (\_ -> Prelude.True) (\_ -> Prelude.False) (iHn m0)})
-    n
+     Datatypes.S m1 ->
+      Specif.sumbool_rec (\_ -> Prelude.True) (\_ -> Prelude.False) (iHn m1)})
+    n m
 
 le_le_S_dec :: Datatypes.Coq_nat -> Datatypes.Coq_nat -> Prelude.Bool
 le_le_S_dec n m =

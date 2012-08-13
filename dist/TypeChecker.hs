@@ -24,8 +24,8 @@ typair_size :: Ty.Coq_ty -> Ty.Coq_ty -> Datatypes.Coq_nat
 typair_size t t' =
   Peano.plus (Ty.ty_size t) (Ty.ty_size t')
 
-eq_rew_dep :: a1 -> a2 -> a1 -> a2
-eq_rew_dep x f y =
+internal_eq_rew_dep :: a1 -> a2 -> a1 -> a2
+internal_eq_rew_dep x f y =
   f
 
 subtype_dec_func :: (Specif.Coq_sigT Ty.Coq_ty Ty.Coq_ty) -> Prelude.Bool

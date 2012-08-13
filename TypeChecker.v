@@ -3,7 +3,7 @@
 
 Require Import Utils Context Tactics Syntax TypeSystem Subtype.
 Require Import Wf Wellfounded.Lexicographic_Product Coq.Program.Tactics Omega.
-Require Import Relation_Operators Transitive_Closure Recdef Program MinMax.
+Require Import Relation_Operators Transitive_Closure Recdef Program.
 Require Import Ty.
 
 
