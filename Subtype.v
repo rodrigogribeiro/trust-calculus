@@ -53,6 +53,11 @@ Section LUB_SECTY.
   Proof.
     intros s1 s2 s3 H1 H2 ; destruct s1 ; destruct s2 ; simpl ; auto.
   Qed.
+
+  Remark sec_ordering_lub_refl : forall s, lub_secty s s = s.
+  Proof.
+    intros s ; destruct s ; simpl ; auto.
+  Qed.
 End LUB_SECTY.    
 
 Definition update_secty (t : ty) (s : secty) : ty :=
@@ -64,6 +69,16 @@ Definition update_secty (t : ty) (s : secty) : ty :=
 Remark sec_ordering_trans : forall s1 s2 s3, sec_ordering s1 s2 -> sec_ordering s2 s3 -> sec_ordering s1 s3.
 Proof.
   intros s1 s2 s3 H1 H2 ; inv H1 ; inv H2 ; auto.
+Qed.
+
+Remark sec_ordering_bot : forall s, sec_ordering Trust s.
+Proof.
+  intros s ; destruct s ; auto.
+Qed.
+
+Remark sec_ordering_top1 : forall s, sec_ordering Untrust s -> s = Untrust.
+Proof.
+  intros s ; destruct s ; intro ; try solve by inversion ; auto.
 Qed.
 
 Remark subtype_refl : forall T, subtype T T.
@@ -123,4 +138,10 @@ Proof.
   simpl in *. subst. inv H1. auto.
 Qed.
 
-Hint Resolve subtype_trans update_secty__subtype subtype_trust_secty.
+Remark subtype_untrust_secty : forall T T', subtype T T' -> sectyof T = Untrust -> sectyof T' = Untrust.
+Proof.
+  intros T T' H ; induction H ; intros. inv H ; try solve by inversion ; auto.
+  simpl in *. subst. inv H1. auto.
+Qed.
+
+Hint Resolve subtype_trans update_secty__subtype subtype_trust_secty subtype_untrust_secty.

@@ -1,3 +1,4 @@
+
 Require Import Utils Context Syntax Ty Subtype Semantics.
 
 (** Definition of the type system -- non syntax directed version**)
@@ -94,42 +95,6 @@ Proof with eauto.
   apply sub_inversion_base in H.
   destruct H as [s' [Heq Hs]].
   eapply IHHty ...
-Qed.
-
-(** progress *)
-
-Theorem progress : 
-  forall t T, has_type empty t T ->
-    value t \/ exists t', t ==> t'.
-Proof with eauto.
-  intros t T Hty.
-  remember (@empty ty) as Gamma.
-  generalize dependent HeqGamma.
-  has_type_cases (induction Hty) Case ; 
-  intros Heq ; subst ; try (solve by inversion) ; try (left ; eauto ; fail) ...  
-  Case "T_App".
-    right.
-    destruct IHHty1 ; subst ...
-    SCase "t1 is a value".
-      destruct IHHty2 ; subst ...
-      SSCase "t2 is a value".
-        destruct (canonical_forms_arrows empty t1 T11 T12 s) 
-          as [x [S1 [s2 Heq]]] ... subst.
-        exists (subst x t2 s2) ...
-      SSCase "t2 can step".
-         destruct H0 as [t2' Ht'] ; exists (tm_app t1 t2') ...
-    SCase "t1 can step".
-      destruct H as [t1' Ht1'].
-      exists (tm_app t1' t2) ...
-  Case "T_Trust".
-    destruct IHHty ...
-    destruct H as [t' Ht'] ; right ; exists (tm_trust t') ...
-  Case "T_Untrust".
-    destruct IHHty ...
-    destruct H as [t' Ht'] ; right ; exists (tm_distrust t') ...
-  Case "T_Check".
-    destruct IHHty ...
-    destruct H0 as [t' Ht'] ; right ; exists (tm_check t') ...
 Qed.
 
 (** inversion lemmas for the typing relation *)
@@ -250,6 +215,66 @@ Proof with eauto.
   destruct H1 as [s' [T1' [T2' [H3 [H4 [H5 H6]]]]]].
   inv H3 ...
 Qed.
+
+(** progress *)
+
+Theorem progress : 
+  forall t T, has_type empty t T ->
+    value t \/ untrust_value t \/ exists t', t ==> t'.
+Proof with eauto.
+  intros t T Hty.
+  remember (@empty ty) as Gamma.
+  generalize dependent HeqGamma.
+  has_type_cases (induction Hty) Case ; 
+  intros Heq ; subst ; try solve by inversion 2 ; try (left ; eauto ; fail)...
+  Case "T_App".
+    right. right.
+    destruct IHHty1 ; subst ...
+    SCase "t1 is a value".
+      destruct IHHty2 ; subst ...
+      SSCase "t2 is a value".
+        destruct (canonical_forms_arrows empty t1 T11 T12 s) 
+          as [x [S1 [s2 Heq]]] ... subst. 
+        exists (subst x t2 s2)...
+      destruct H0.
+      SSCase "t2 is untrust value".
+         destruct (canonical_forms_arrows empty t1 T11 T12 s) as [x [S1 [s2 Heq]]] ; subst ...
+      SSCase "t2 can step".
+         destruct H0 as [t2' H1]. exists (tm_app t1 t2')...
+    destruct H.
+    SCase "t1 is an untrust value".
+      destruct H as [t1' Ht1']. inv Ht1'.
+      apply typing_inversion_distrust in Hty1.
+      destruct Hty1 as [T [HT HS]].
+      apply sub_inversion_arrow in HS. destruct HS as [s' [T1' [T2' [He [Hs1 [Hs2 Hss]]]]]].
+      destruct T. inv He. simpl in He ; inv He. apply typing_inversion_true in HT. inv HT.
+      apply typing_inversion_distrust in Hty1.
+      destruct Hty1 as [T [HT HS]].
+      apply sub_inversion_arrow in HS. destruct HS as [s' [T1' [T2' [He [Hs1 [Hs2 Hss]]]]]].
+      destruct T. inv He. simpl in He ; inv He. apply typing_inversion_false in HT. inv HT.
+      destruct IHHty2 ... destruct H.
+      exists (tm_distrust (tm_app (tm_abs x T t) t2)) ...
+      destruct H as [t1 Ht']. assert (untrust_value (tm_distrust (tm_abs x T t))). auto.
+      exists (tm_app (tm_distrust (tm_abs x T t)) t1) ...
+      SCase "t1 can step".
+         destruct H as [t1' Ht1']. exists (tm_app t1' t2) ...
+  Case "T_Trust".
+    destruct IHHty ... destruct H. inv H. right. right.
+    exists (tm_trust v) ...
+    destruct H as [t' Ht'] ; right ; right ; exists (tm_trust t') ...
+  Case "T_Untrust".
+    destruct IHHty ... destruct H.
+    inv H. right ; right. exists (tm_distrust v). apply e_distrustd1...
+    destruct H as [t' Ht'] ; right ; right ; exists (tm_distrust t') ...
+  Case "T_Check".
+    destruct IHHty ... destruct H0.
+    inv H0. apply typing_inversion_distrust in Hty. destruct Hty as [T' [HT' HS]]. 
+    apply subtype_untrust_secty in HS... rewrite H in HS ; inv HS... 
+    destruct T' ; simpl ...
+    destruct H0 as [t' Ht'] ; right ; right ; exists (tm_check t') ...
+Qed.
+
+
 
 (** context invariance **)
 
@@ -411,6 +436,53 @@ Proof with eauto.
    SCase "ST_AppAbs".
      destruct (abs_arrow _ _ _ _ _ _ HT1) as [HA1 HA2].
      apply substitution_preserves_typing with T ...
+ destruct (abs_arrow _ _ _ _ _ _ HT1) as [HA1 HA2].
+ apply substitution_preserves_typing with T ...
+ apply typing_inversion_distrust in HT1. destruct HT1 as [T' [HT HS]].
+ apply sub_inversion_arrow in HS. destruct HS as [s' [T1' [T2'' [He [HS1 [HS2 HSs]]]]]].
+ destruct T' ; simpl in He ; inv He. inv HSs. apply T_Untrust...
+ assert (T12 = update_secty T12 (sectyof T12)). destruct T12 ; simpl ; rewrite sec_ordering_lub_refl ...
+ rewrite H.
+ apply T_App with T1'. apply T_Sub with (arrow T T12 Trust). apply T_Abs.
+ apply typing_inversion_abs in HT. destruct HT as [T2' [HS2' HT2']].
+ apply T_Sub with T2'... apply sub_inversion_arrow in HS2'.
+ destruct HS2' as [s'' [T11' [T22 [Hae [Hs1 [Hs2 Hss]]]]]].
+ inversion Hae. clear Hae. apply (subtype_trans _ _ _ Hs2) in HS2...
+ constructor...
+ apply typing_inversion_abs in HT. destruct HT as [T3 [HS3 HT3]].
+ inversion HS3 ... apply sec_ordering_bot. apply T_Sub with T11...
+ apply typing_inversion_distrust in HT1. destruct HT1 as [T' [HT' HS']].
+ apply sub_inversion_arrow in HS'. destruct HS' as [s' [T1' [T2' [He [HS1 [HS2 Hss]]]]]].
+ destruct T' ; simpl in He ; inv He. apply sec_ordering_top1 in Hss. subst.
+ apply T_Untrust...
+ assert (T12 = update_secty T12 (sectyof T12)). destruct T12 ; simpl ; rewrite sec_ordering_lub_refl ...
+ rewrite H.
+ apply T_App with T1'. apply T_Sub with (arrow T T12 Trust). apply T_Abs.
+ apply typing_inversion_abs in HT'. destruct HT' as [T2 [HS2' HT2']].
+ apply T_Sub with T2... apply sub_inversion_arrow in HS2'.
+ destruct HS2' as [s'' [T11' [T22 [Hae [Hs1 [Hs2 Hss]]]]]].
+ inversion Hae. clear Hae. apply (subtype_trans _ _ _ Hs2) in HS2...
+ constructor...
+ apply typing_inversion_abs in HT'. destruct HT' as [T3 [HS3 HT3]].
+ inversion HS3 ... apply sec_ordering_bot. apply T_Sub with T11...
+ apply T_Trust. apply typing_inversion_distrust in HT. destruct HT as [T' [HT' HS]].
+ eapply T_Sub ...
+Qed.
+
+Definition stuck (t : term) : Prop :=
+  (normal_form step) t /\ ~ value t /\ ~ untrust_value t.
+
+Corollary soundness : forall t t' T,
+  has_type empty t T ->
+  t ==>* t' ->
+  ~(stuck t').
+Proof.
+  intros t t' T Hhas_type Hmulti. unfold stuck.
+  intros [Hnf [Hnot_val Hnotu]]. unfold normal_form in Hnf.
+  induction Hmulti.
+  destruct (progress _ _ Hhas_type) as [Hv | [Hu | He]] ; try contradiction.
+  apply IHHmulti ; eauto.
+  eapply preservation ; eauto.
 Qed.
 
 (** syntax directed system **)
