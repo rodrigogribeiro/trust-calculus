@@ -116,11 +116,11 @@ typecheck_dec e ctx =
      Prelude.Nothing -> Prelude.Nothing};
    Syntax.Coq_tm_trust t ->
     case typecheck_dec t ctx of {
-     Prelude.Just s -> Prelude.Just (Subtype.update_secty s Ty.Trust);
+     Prelude.Just s -> Prelude.Just (Subtype.update s Ty.Trust);
      Prelude.Nothing -> Prelude.Nothing};
    Syntax.Coq_tm_distrust t ->
     case typecheck_dec t ctx of {
-     Prelude.Just s -> Prelude.Just (Subtype.update_secty s Ty.Untrust);
+     Prelude.Just s -> Prelude.Just (Subtype.update s Ty.Untrust);
      Prelude.Nothing -> Prelude.Nothing};
    Syntax.Coq_tm_check t ->
     case typecheck_dec t ctx of {

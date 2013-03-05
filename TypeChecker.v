@@ -120,10 +120,10 @@ Definition typecheck_dec : forall(e : term) (ctx : finite_map ty),
             [|| update_secty (snd p) (sectyof tf) ||]
        | tm_trust t  => 
             ty <-- F t ctx ;
-            [|| update_secty ty Trust ||]
+            [|| update ty Trust ||]
        | tm_distrust t => 
             ty <-- F t ctx ;
-            [|| update_secty ty Untrust ||]
+            [|| update ty Untrust ||]
        | tm_check t => 
             ty <-- F t ctx ;
             trustworth ty ;;;

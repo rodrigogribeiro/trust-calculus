@@ -14,14 +14,13 @@ Inductive has_type : finite_map ty -> term -> ty -> Prop :=
   | T_App : forall ctx t1 t2 T11 T12 s, 
         has_type ctx t1 (arrow T11 T12 s) -> 
         has_type ctx t2 T11 ->
-        (** subtype T11' T11     -> **)
         has_type ctx (tm_app t1 t2) (update_secty T12 s)
   | T_Trust : forall ctx t T,
         has_type ctx t T ->
-        has_type ctx (tm_trust t) (update_secty T Trust)
+        has_type ctx (tm_trust t) (update T Trust)
   | T_Untrust : forall ctx t T,
         has_type ctx t T ->
-        has_type ctx (tm_distrust t) (update_secty T Untrust)
+        has_type ctx (tm_distrust t) (update T Untrust)
   | T_Check : forall ctx t T,
         has_type ctx t T ->
         sectyof T = Trust ->
@@ -29,14 +28,27 @@ Inductive has_type : finite_map ty -> term -> ty -> Prop :=
   | T_Sub : forall ctx t T T',
         has_type ctx t T ->
         subtype T T'     -> 
-        has_type ctx t T'. 
-                                     
+        has_type ctx t T'.
+                                   
 Tactic Notation "has_type_cases" tactic(first) ident(c) :=
   first ; [Case_aux c "T_True"  | Case_aux c "T_False"   | Case_aux c "T_Var"   |
            Case_aux c "T_Abs"   | Case_aux c "T_App"     | Case_aux c "T_Trust" | 
            Case_aux c "T_Untrust" | Case_aux c "T_Check" | Case_aux c "T_Sub"].
 
 Hint Constructors has_type.
+
+Example typing_example6 :
+forall x, has_type empty (tm_abs x (ty_bool Untrust) (tm_check (tm_trust (tm_var x)))) (arrow (ty_bool Untrust) (ty_bool Trust) Trust).
+Proof.
+  intro x.
+apply T_Abs.
+apply T_Check.
+eapply T_Sub.
+apply T_Trust.
+apply T_Var. simpl. destruct (eq_id_dec x x) ; auto. elim n ; auto.
+simpl. auto.
+auto.
+Qed.
 
 (** inversion lemmas for subtyping **)
 
@@ -166,7 +178,7 @@ Qed.
 
 Lemma typing_inversion_trust : 
   forall ctx t T, has_type ctx (tm_trust t) T ->
-    exists T', has_type ctx t T' /\ subtype (update_secty T' Trust) T.
+    exists T', has_type ctx t T' /\ subtype (update T' Trust) T.
 Proof with eauto.
    intros ctx t T Hty.
    remember (tm_trust t) as V.
@@ -179,7 +191,7 @@ Qed.
 
 Lemma typing_inversion_distrust :
   forall ctx t T, has_type ctx (tm_distrust t) T ->
-    exists T', has_type ctx t T' /\ subtype (update_secty T' Untrust) T.
+    exists T', has_type ctx t T' /\ subtype (update T' Untrust) T.
 Proof with eauto.
   intros ctx t T Hty.
   remember (tm_distrust t) as V.
@@ -253,9 +265,9 @@ Proof with eauto.
       apply sub_inversion_arrow in HS. destruct HS as [s' [T1' [T2' [He [Hs1 [Hs2 Hss]]]]]].
       destruct T. inv He. simpl in He ; inv He. apply typing_inversion_false in HT. inv HT.
       destruct IHHty2 ... destruct H.
-      exists (tm_distrust (tm_app (tm_abs x T t) t2)) ...
-      destruct H as [t1 Ht']. assert (untrust_value (tm_distrust (tm_abs x T t))). auto.
-      exists (tm_app (tm_distrust (tm_abs x T t)) t1) ...
+      exists (tm_distrust (subst x t2 t)) ...
+      destruct H as [t2' H].
+      exists (tm_app (tm_distrust (tm_abs x T t)) t2') ...
       SCase "t1 can step".
          destruct H as [t1' Ht1']. exists (tm_app t1' t2) ...
   Case "T_Trust".
@@ -413,10 +425,10 @@ Proof with eauto.
        eapply extend_swap_neq in Heqe ...
    Case "tm_trust".
      destruct (typing_inversion_trust _ _ _ Htypt) as [T [H1 H2]].
-     apply T_Sub with (update_secty T Trust) ...
+     apply T_Sub with (update T Trust) ...
    Case "tm_distrust".
      destruct (typing_inversion_distrust _ _ _ Htypt) as [T [H1 H2]].
-     apply T_Sub with (update_secty T Untrust) ...
+     apply T_Sub with (update T Untrust) ...
    Case "tm_check".
      destruct (typing_inversion_check _ _ _ Htypt) as [T [H1 [H2 H3]]].
      eapply T_Sub...
@@ -424,49 +436,129 @@ Qed.
      
 (** preservation **)
 
+Remark update_arrow : forall T T1 T2 s s', update T s = arrow T1 T2 s' -> exists s1, T = arrow T1 T2 s1 /\ s = s'.
+Proof.
+  intros T T1 T2 s s' H1.
+  induction T ; simpl in * ; try solve by inversion.
+  inv H1.
+  exists s0 ; split ; auto. 
+Qed.
+
+Remark subtype_untrust : forall T, subtype T (update T Untrust).
+Proof.
+  induction T ; simpl ; destruct s ; auto.
+Qed.
+
+Remark subtype_trust : forall T, subtype (update T Trust) T.
+Proof.
+  induction T ; simpl ; destruct s ; auto.
+Qed.
+
+Remark subtype_trust1 : forall T T', sectyof T = Trust -> subtype T' T -> subtype T' (update T Trust).
+Proof.
+  intros T T' H H1 ; induction H1 ; simpl in * ; subst ; auto.
+Qed.
+
+Remark sectyof_update : forall T s, sectyof (update T s) = s.
+Proof.
+  induction T ; auto.
+Qed.
+
+Remark update_preserves_subtype : forall T T' s, subtype T T' -> subtype (update T s) (update T' s).
+Proof.
+  induction 1 ; simpl in * ; auto.
+Qed.
+
+Remark subtype_update1 : forall T s, sec_ordering Untrust s -> subtype (update T Untrust) (update_secty T s).
+Proof.
+  induction T ; intros s' H ; simpl ; inv H ; auto.
+Qed.
+
+
+Hint Resolve subtype_untrust sectyof_update subtype_trust subtype_trust1 
+             update_preserves_subtype subtype_update1.
+
 Theorem preservation : 
   forall t t' T, has_type empty t T ->
-    t ==> t' -> has_type empty t' T.
+    t ==> t' -> exists T', has_type empty t' T' /\ subtype T' T.
 Proof with eauto.
- intros t t' T HT.
- remember (@empty ty) as ctx. generalize dependent Heqctx.
- generalize dependent t'.
- has_type_cases (induction HT) Case ; intros t' Heqctx HE ; inv HE...
- Case "T_App".
-   SCase "ST_AppAbs".
+ intros t t' T HT ;
+   remember (@empty ty) as ctx ; generalize dependent t' ;
+     has_type_cases (induction HT) Case ; intros t' HE ; inv HE...
+  Case "T_App".
      destruct (abs_arrow _ _ _ _ _ _ HT1) as [HA1 HA2].
-     apply substitution_preserves_typing with T ...
- destruct (abs_arrow _ _ _ _ _ _ HT1) as [HA1 HA2].
- apply substitution_preserves_typing with T ...
- apply typing_inversion_distrust in HT1. destruct HT1 as [T' [HT HS]].
- apply sub_inversion_arrow in HS. destruct HS as [s' [T1' [T2'' [He [HS1 [HS2 HSs]]]]]].
- destruct T' ; simpl in He ; inv He. inv HSs. apply T_Untrust...
- assert (T12 = update_secty T12 (sectyof T12)). destruct T12 ; simpl ; rewrite sec_ordering_lub_refl ...
- rewrite H.
- apply T_App with T1'. apply T_Sub with (arrow T T12 Trust). apply T_Abs.
- apply typing_inversion_abs in HT. destruct HT as [T2' [HS2' HT2']].
- apply T_Sub with T2'... apply sub_inversion_arrow in HS2'.
- destruct HS2' as [s'' [T11' [T22 [Hae [Hs1 [Hs2 Hss]]]]]].
- inversion Hae. clear Hae. apply (subtype_trans _ _ _ Hs2) in HS2...
- constructor...
- apply typing_inversion_abs in HT. destruct HT as [T3 [HS3 HT3]].
- inversion HS3 ... apply sec_ordering_bot. apply T_Sub with T11...
- apply typing_inversion_distrust in HT1. destruct HT1 as [T' [HT' HS']].
- apply sub_inversion_arrow in HS'. destruct HS' as [s' [T1' [T2' [He [HS1 [HS2 Hss]]]]]].
- destruct T' ; simpl in He ; inv He. apply sec_ordering_top1 in Hss. subst.
- apply T_Untrust...
- assert (T12 = update_secty T12 (sectyof T12)). destruct T12 ; simpl ; rewrite sec_ordering_lub_refl ...
- rewrite H.
- apply T_App with T1'. apply T_Sub with (arrow T T12 Trust). apply T_Abs.
- apply typing_inversion_abs in HT'. destruct HT' as [T2 [HS2' HT2']].
- apply T_Sub with T2... apply sub_inversion_arrow in HS2'.
- destruct HS2' as [s'' [T11' [T22 [Hae [Hs1 [Hs2 Hss]]]]]].
- inversion Hae. clear Hae. apply (subtype_trans _ _ _ Hs2) in HS2...
- constructor...
- apply typing_inversion_abs in HT'. destruct HT' as [T3 [HS3 HT3]].
- inversion HS3 ... apply sec_ordering_bot. apply T_Sub with T11...
- apply T_Trust. apply typing_inversion_distrust in HT. destruct HT as [T' [HT' HS]].
- eapply T_Sub ...
+     exists (update_secty T12 s) ; split.
+     eapply substitution_preserves_typing with T...
+     apply subtype_refl.
+     destruct (IHHT1 eq_refl t1' H2) as [Ta [HTa HSa]].
+     destruct (sub_inversion_arrow _ _ _ _ HSa) as [sa [Ta1 [Ta2 [Ha1 [Ha2 [Ha3 Ha4]]]]]] ; subst.
+     exists (update_secty T12 s) ; split ...
+     destruct (IHHT2 eq_refl t2' H3) as [Ta [HTa HSa]].
+     exists (update_secty T12 s) ; split ...
+     exists (update_secty T12 s) ; split ...
+     destruct (abs_arrow _ _ _ _ _ _ HT1) as [HA1 HA2].
+     eapply substitution_preserves_typing with T...
+     destruct (IHHT2 eq_refl t2' H3) as [Ta [HTa HSa]].
+     exists (update_secty T12 s) ; split ...
+     destruct (typing_inversion_distrust _ _ _ HT1) as [Ta [HTa HSa]].
+     destruct (sub_inversion_arrow _ _ _ _ HSa) as [sa [Ta1 [Ta2 [Ha1 [Ha2 [Ha3 Ha4]]]]]] ; subst.
+     apply update_arrow in Ha1. destruct Ha1 as [sx [Hx1 Hx2]]. subst. simpl in *.
+     exists (update T12 Untrust) ; split... apply T_Untrust.
+     destruct (typing_inversion_abs _ _ _ _ _ HTa) as [Tc [HSc HTc]].
+     inv HSc. apply (subtype_trans _ _ _ H7) in Ha3.
+     apply substitution_preserves_typing with T...
+     inv HT1. apply update_arrow in H1. destruct H1 as [sb [Hb Hb']].
+     subst.
+     exists (update T12 Untrust) ; split ... apply T_Untrust.
+     inv H3.
+     apply substitution_preserves_typing with T11...
+     destruct (typing_inversion_abs _ _ _ _ _ H) as [Td [HSd HTd]].
+     inv HSd. inv H0. apply (subtype_trans _ _ _ H7) in H12.
+     apply substitution_preserves_typing with T...
+     destruct (typing_inversion_distrust _ _ _ H) as [Ta [HTa HSa]].
+     destruct (typing_inversion_abs _ _ _ _ _ HTa) as [Tb [HSb HTb]].
+     destruct (sub_inversion_arrow _ _ _ _ H0) as [sc [Tc1 [Tc2 [Hc1 [Hc2 [Hc3 Hc4]]]]]] ; subst.
+     destruct (sub_inversion_arrow _ _ _ _ HSa) as [sd [Td1 [Td2 [Hd1 [Hd2 [Hd3 Hd4]]]]]] ; subst.
+     destruct (update_arrow _ _ _ _ _ Hd1) as [se [He1 He2]]. subst. simpl in *.
+     inv HSa. clear Hd1. inv Hd4 ; clear H10. inv Hc4.
+     exists (update T12 Untrust) ; split ... apply T_Untrust. inv H0.
+     inv HSb. simpl. apply substitution_preserves_typing with T... 
+ Case "T_Trust".
+     destruct (IHHT eq_refl t1' H0) as [Ta [HTa HSa]].
+     exists (update T Trust) ; split ...
+     destruct (typing_inversion_distrust _ _ _ HT) as [Ta [HTa HSa]].
+     exists (update T Trust) ; split ...
+     exists (update T Trust) ; split ...
+     inv H0. apply typing_inversion_true in HT.
+     destruct T. simpl in *. apply T_True. inv HT.
+     apply typing_inversion_false in HT. destruct T ; simpl in *...
+     inv HT.
+     destruct (typing_inversion_abs _ _ _ _ _ HT) as [T1 [Ha1 Ha2]].
+     inv Ha1. simpl.
+     apply T_Sub with (arrow T0 T2' Trust). apply T_Abs ...
+     constructor ...
+ Case "T_Untrust".
+     destruct (IHHT eq_refl t1' H0) as [T' [HT' HS']].
+     exists (update T' Untrust) ; split ...
+ Case "T_Check".
+     destruct (IHHT eq_refl t1' H1) as [T' [HT' HS']].
+     exists (update T Trust) ; split...
+ Case "T_Sub".
+     destruct (typing_inversion_app _ _ _ _ HT) as [T1 [s1 [HA1 [HA2 HA3]]]].
+     destruct (IHHT eq_refl (subst x v2 t12)) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (tm_app t1' t2)) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (tm_app v1 t2')) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (subst x v t12)) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (tm_app v1 t2')) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (tm_trust t1')) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (tm_distrust t1')) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (tm_check t1')) as [TH [HB HSB]]...
+     destruct (IHHT eq_refl (tm_trust v)) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (tm_distrust v)) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (tm_distrust (subst x v t0))) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl (tm_distrust (subst x v t0))) as [TB [HB HSB]]...
+     destruct (IHHT eq_refl t') as [TB [HB HSB]]...
+     destruct (IHHT eq_refl t') as [TB [HB HSB]]...
 Qed.
 
 Definition stuck (t : term) : Prop :=
@@ -476,13 +568,14 @@ Corollary soundness : forall t t' T,
   has_type empty t T ->
   t ==>* t' ->
   ~(stuck t').
-Proof.
+Proof with eauto.
   intros t t' T Hhas_type Hmulti. unfold stuck.
   intros [Hnf [Hnot_val Hnotu]]. unfold normal_form in Hnf.
   induction Hmulti.
   destruct (progress _ _ Hhas_type) as [Hv | [Hu | He]] ; try contradiction.
   apply IHHmulti ; eauto.
-  eapply preservation ; eauto.
+  eapply preservation in Hhas_type ; eauto.
+  destruct Hhas_type as [Tx [Hx Hsx]] ; eapply T_Sub...
 Qed.
 
 (** syntax directed system **)
@@ -502,10 +595,10 @@ Inductive has_type_alg : finite_map ty -> term -> ty -> Prop :=
         has_type_alg ctx (tm_app t1 t2) (update_secty T12 s)
   | TA_Trust : forall ctx t T,
         has_type_alg ctx t T ->
-        has_type_alg ctx (tm_trust t) (update_secty T Trust)
+        has_type_alg ctx (tm_trust t) (update T Trust)
   | TA_Untrust : forall ctx t T,
         has_type_alg ctx t T ->
-        has_type_alg ctx (tm_distrust t) (update_secty T Untrust)
+        has_type_alg ctx (tm_distrust t) (update T Untrust)
   | TA_Check : forall ctx t T,
         has_type_alg ctx t T ->
         sectyof T = Trust ->

@@ -10,6 +10,12 @@ sectyof t =
    Ty.Coq_ty_bool s -> s;
    Ty.Coq_arrow t0 t1 s -> s}
 
+update :: Ty.Coq_ty -> Ty.Coq_secty -> Ty.Coq_ty
+update t s =
+  case t of {
+   Ty.Coq_ty_bool s0 -> Ty.Coq_ty_bool s;
+   Ty.Coq_arrow l r s0 -> Ty.Coq_arrow l r s}
+
 lub_secty :: Ty.Coq_secty -> Ty.Coq_secty -> Ty.Coq_secty
 lub_secty x y =
   case x of {

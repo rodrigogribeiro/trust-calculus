@@ -1,6 +1,6 @@
 (** definition of the small step semantics *)
 
-Require Import Utils Syntax.
+Require Import Utils Syntax Ty.
 
 Fixpoint subst (x : id) (t : term) (t' : term) {struct t'} : term :=
   match t' with
@@ -38,8 +38,8 @@ Inductive step : term -> term -> Prop :=
   | e_check1 : forall t1 t1', t1 ==> t1' -> tm_check t1 ==> tm_check t1'
   | e_distrustc1 : forall v, value v -> tm_trust (tm_distrust v) ==> tm_trust v
   | e_distrustd1 : forall v, value v -> tm_distrust (tm_distrust v) ==> tm_distrust v
-  | e_distrusta1 : forall v x T t, value v -> tm_app (tm_distrust (tm_abs x T t)) v ==> tm_distrust (tm_app (tm_abs x T t) v)
-  | e_distrusta2 : forall v x T t, untrust_value v -> tm_app (tm_distrust (tm_abs x T t)) v ==> tm_distrust (tm_app (tm_abs x T t) v)
+  | e_distrusta1 : forall v x T t, value v -> tm_app (tm_distrust (tm_abs x T t)) v ==> tm_distrust (subst x v t)
+  | e_distrusta2 : forall v x T t, untrust_value v -> tm_app (tm_distrust (tm_abs x T t)) v ==> tm_distrust (subst x v t)
   | e_trustv : forall t, value t -> tm_trust t ==> t
   | e_checkv : forall t, value t -> tm_check t ==> t
     where "t '==>' t'" := (step t t').
@@ -88,5 +88,29 @@ Qed.
 Definition multi_step := refl_step_closure step.
 
 Notation "t '==>*' v" := (multi_step t v) (at level 40).
+
+Example test : tm_trust (tm_trust tm_true) ==>* tm_true.
+Proof.
+  eapply rsc_step. econstructor. eapply e_trustv.
+  auto. eapply rsc_step. eapply e_trustv. auto.
+  constructor.
+Qed.
+
+Example test2 : ~ exists t,  (tm_distrust tm_true) ==> t.
+Proof.
+  intro. destruct H as [t' Ht]. inversion Ht. subst.
+  inversion H0.
+Qed.
+
+Example test3 : ~ tm_check (tm_distrust tm_true) ==>* tm_true.
+Proof.
+  intros H ; inv H ; try solve by inversion 3.
+Qed.
+
+Example test4 : tm_distrust (tm_check tm_true) ==>* (tm_distrust tm_true).
+Proof.
+  eapply rsc_step. apply e_distrust1. apply e_checkv. auto.
+  eapply rsc_refl.
+Qed.
 
 

@@ -25,6 +25,12 @@ Definition sectyof (t : ty) : secty :=
     | arrow _ _ s => s
   end.
 
+Definition update (t : ty) (s : secty) : ty :=
+  match t with
+    | (ty_bool _) => ty_bool s
+    | (arrow l r _) => arrow l r s
+  end.
+
 (** least upper bound on sec types **)
 
 Section LUB_SECTY.
@@ -144,4 +150,5 @@ Proof.
   simpl in *. subst. inv H1. auto.
 Qed.
 
-Hint Resolve subtype_trans update_secty__subtype subtype_trust_secty subtype_untrust_secty.
+Hint Resolve subtype_trans update_secty__subtype subtype_trust_secty 
+             subtype_untrust_secty.
