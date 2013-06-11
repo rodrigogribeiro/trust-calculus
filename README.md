@@ -16,27 +16,27 @@ Module Structure
 
 The formalization is composed by the following modules:
 
-1 - Utils: This module contains some utilities like tactics and definitions about identifiers
+     1 - Utils: This module contains some utilities like tactics and definitions about identifiers
            that are used by several modules.
-2 - Ty: Definition of type and trust annotation syntax.
-3 - Syntax: Definition of term syntax.
-4 - Context: Definitions related to typing contexts and lemmas about them.
-5 - Semantics: Definition of the small step operational semantics. This module
+     2 - Ty: Definition of type and trust annotation syntax.
+     3 - Syntax: Definition of term syntax.
+     4 - Context: Definitions related to typing contexts and lemmas about them.
+     5 - Semantics: Definition of the small step operational semantics. This module
                contains the proof that the proposed semantics is deterministic.
-6 - Subtype: Definition of the trust annotation ordering and subtype relation.
+     6 - Subtype: Definition of the trust annotation ordering and subtype relation.
              This module also provide several lemmas about these two ordering relations.
-7 - TypeSystem: This module defines the non-syntax directed type system, the proof of
+     7 - TypeSystem: This module defines the non-syntax directed type system, the proof of
                 type soundness and their related lemmas, the syntax directed type system
 	        and its proof of soundness and completeness with respect to the 
 	        non-syntax directed one.
-8 - TypeChecker: This module proves the decidability of the typing problem for
+     8 - TypeChecker: This module proves the decidability of the typing problem for
                  the lambda calculus with trust types. From this proof, we can
 		 extract the certified type checker.
-9 - Simulation: This module provides definitions and proofs of erasure and
+     9 - Simulation: This module provides definitions and proofs of erasure and
                 simulations theorems.
-10 - Stlc: Definitions of the simply typed lambda calculus. This is used
+     10 - Stlc: Definitions of the simply typed lambda calculus. This is used
            in the formalization of erasure and simulations properties.
-11 - Extraction: This module contains commands to extract the certified type checker.
+     11 - Extraction: This module contains commands to extract the certified type checker.
                  By default, it generate the Haskell code of the type checker in
 		 the "dist" directory.
 
