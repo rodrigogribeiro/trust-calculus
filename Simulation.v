@@ -1,6 +1,8 @@
 Require Import Context Stlc TypeSystem Syntax Ty Subtype List Utils Semantics.
 
-(** Erasure **)
+(** Erasure and simulation proofs **)
+
+(* erasure functions for types, terms and contexts *)
 
 Fixpoint erase_ty (t : ty) : stlc_ty :=
   match t with
@@ -78,6 +80,8 @@ Proof.
 Qed. 
 
 Hint Resolve lookup_erase subtype_erase value_erase.
+
+(* proof of the theorem 5 - if e is well typed, |e| is also well typed in the sltc *)
 
 Theorem erase_typing : forall ctx e T, has_type ctx e T -> stlc_has_type (erase_context ctx) (erase_term e) (erase_ty T).
 Proof with eauto.

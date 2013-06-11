@@ -7,7 +7,10 @@ Require Export List.
 Require Export Arith_base.
 Require Export Arith.EqNat.
 
-(** case tactic **)
+(** case tactic
+    This tactic is defined on  Pierce's book Software foundations.
+    It is used to structure proofs, easing the task of
+    read a tactic script. **)
 
 Require String. Open Scope string_scope.
 
@@ -72,7 +75,7 @@ Notation "x <-- e1 ; e2" := (match e1 with
 Notation "e1 ;;; e2" := (if e1 then e2 else !!)
   (right associativity, at level 60).
 
-(** identifiers **)
+(** Definition of identifier and their related functions and lemmas **)
 
 Inductive id : Type :=
   | Id : nat -> id.

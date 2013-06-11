@@ -37,19 +37,6 @@ Tactic Notation "has_type_cases" tactic(first) ident(c) :=
 
 Hint Constructors has_type.
 
-Example typing_example6 :
-forall x, has_type empty (tm_abs x (ty_bool Untrust) (tm_check (tm_trust (tm_var x)))) (arrow (ty_bool Untrust) (ty_bool Trust) Trust).
-Proof.
-  intro x.
-apply T_Abs.
-apply T_Check.
-eapply T_Sub.
-apply T_Trust.
-apply T_Var. simpl. destruct (eq_id_dec x x) ; auto. elim n ; auto.
-simpl. auto.
-auto.
-Qed.
-
 (** inversion lemmas for subtyping **)
 
 Lemma sub_inversion_base : 
@@ -265,13 +252,13 @@ Proof with eauto.
       apply sub_inversion_arrow in HS. destruct HS as [s' [T1' [T2' [He [Hs1 [Hs2 Hss]]]]]].
       destruct T. inv He. simpl in He ; inv He. apply typing_inversion_false in HT. inv HT.
       destruct IHHty2 ... destruct H.
-      exists (tm_distrust (subst x t2 t)) ...
+      exists (tm_distrust (subst x t2 t))...
       destruct H as [t2' H].
       exists (tm_app (tm_distrust (tm_abs x T t)) t2') ...
       SCase "t1 can step".
          destruct H as [t1' Ht1']. exists (tm_app t1' t2) ...
   Case "T_Trust".
-    destruct IHHty ... destruct H. inv H. right. right.
+    destruct IHHty... destruct H. inv H. right. right.
     exists (tm_trust v) ...
     destruct H as [t' Ht'] ; right ; right ; exists (tm_trust t') ...
   Case "T_Untrust".

@@ -47,5 +47,5 @@ type Coq_relation x = ()
 
 ex_falso_quodlibet :: a1
 ex_falso_quodlibet =
-  Prelude.error "AXIOM TO BE REALIZED"
+  Prelude.error "absurd case"
 

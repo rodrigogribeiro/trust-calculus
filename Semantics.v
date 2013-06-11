@@ -2,6 +2,8 @@
 
 Require Import Utils Syntax Ty.
 
+(** definition of substitution **)
+
 Fixpoint subst (x : id) (t : term) (t' : term) {struct t'} : term :=
   match t' with
     | tm_var i => if beq_id x i then t else t'
@@ -14,6 +16,8 @@ Fixpoint subst (x : id) (t : term) (t' : term) {struct t'} : term :=
     | tm_false       => tm_false
   end.
 
+(** definition of values *)
+
 Inductive value : term -> Prop := 
   | v_true : value tm_true
   | v_false : value tm_false 
@@ -25,6 +29,8 @@ Inductive untrust_value : term -> Prop :=
 Hint Constructors value untrust_value.
 
 Reserved Notation "e '==>' e'" (at level 40).
+
+(* the small step semantics relation *)
 
 Inductive step : term -> term -> Prop :=
   | e_appabs : forall x T t12 v2, value v2 -> (tm_app (tm_abs x T t12) v2) ==> subst x v2 t12
@@ -77,6 +83,8 @@ Ltac s := f_equal ; eauto ;
          | [ |- ex _] => eexists ; eauto ; fail
        end) ; try solve by inversion ; unfold step_normal_form, normal_form in *.
 
+(* this lemma proves that the previous semantics is deterministic *)
+
 Lemma step_deterministic : forall t t', t ==> t' -> forall t'', t ==> t'' -> t' = t''.
 Proof with eauto.
    intros t t' H ; induction H ; intros t'' H2 ; inv H2 ; repeat s ...
@@ -89,28 +97,7 @@ Definition multi_step := refl_step_closure step.
 
 Notation "t '==>*' v" := (multi_step t v) (at level 40).
 
-Example test : tm_trust (tm_trust tm_true) ==>* tm_true.
-Proof.
-  eapply rsc_step. econstructor. eapply e_trustv.
-  auto. eapply rsc_step. eapply e_trustv. auto.
-  constructor.
-Qed.
 
-Example test2 : ~ exists t,  (tm_distrust tm_true) ==> t.
-Proof.
-  intro. destruct H as [t' Ht]. inversion Ht. subst.
-  inversion H0.
-Qed.
 
-Example test3 : ~ tm_check (tm_distrust tm_true) ==>* tm_true.
-Proof.
-  intros H ; inv H ; try solve by inversion 3.
-Qed.
-
-Example test4 : tm_distrust (tm_check tm_true) ==>* (tm_distrust tm_true).
-Proof.
-  eapply rsc_step. apply e_distrust1. apply e_checkv. auto.
-  eapply rsc_refl.
-Qed.
 
 

@@ -1,7 +1,7 @@
 
-Require Import Utils Ty.
+(* Definition of the syntax of the trust lambda-calculus *)
 
-(** simple sytax definition for the calculus**)
+Require Import Utils Ty.
 
 Inductive term : Type :=
   | tm_false : term

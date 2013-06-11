@@ -2,9 +2,15 @@ Require Import Utils Ty.
 
 (** definition of ordering between types **)
 
+(* this inductive type encodes the ordering
+   between two trust annotations as the least
+   reflexive relation such that sec_ordering Trust Untrust *)
+
 Inductive sec_ordering : secty -> secty -> Prop :=
   | so_trustuntrust : sec_ordering Trust Untrust
   | so_refl : forall t, sec_ordering t t.
+
+(* the subtype relation *)
 
 Inductive subtype : ty -> ty -> Prop :=
   | s_base : forall s s', sec_ordering s s' -> subtype (ty_bool s) (ty_bool s')
@@ -19,11 +25,15 @@ Tactic Notation "subtype_cases" tactic(first) ident(c) :=
 
 Hint Constructors sec_ordering subtype.
 
+(* getting the trust annotation of a type *)
+
 Definition sectyof (t : ty) : secty :=
   match t with
     | ty_bool s => s
     | arrow _ _ s => s
   end.
+
+(* updating the trust annotation of a type *)
 
 Definition update (t : ty) (s : secty) : ty :=
   match t with
@@ -31,7 +41,7 @@ Definition update (t : ty) (s : secty) : ty :=
     | (arrow l r _) => arrow l r s
   end.
 
-(** least upper bound on sec types **)
+(** least upper bound on trust annotations and their properties **)
 
 Section LUB_SECTY.
   Definition lub_secty (x y : secty) : secty :=
@@ -66,11 +76,17 @@ Section LUB_SECTY.
   Qed.
 End LUB_SECTY.    
 
+(* updating the trust annotation of a type with the least
+   upper bound of its trust annotation and s. This is
+   used in the type rule for applications *)
+
 Definition update_secty (t : ty) (s : secty) : ty :=
   match t with
     | ty_bool s' => ty_bool (lub_secty s s')
     | arrow l r s' => arrow l r (lub_secty s s')
   end.
+
+(* properties of trust annotations ordering *)
 
 Remark sec_ordering_trans : forall s1 s2 s3, sec_ordering s1 s2 -> sec_ordering s2 s3 -> sec_ordering s1 s3.
 Proof.
@@ -94,6 +110,8 @@ Qed.
 
 Hint Resolve sec_ordering_trans subtype_refl.
 
+(* subtype relation is transitive *)
+
 Remark subtype_trans : forall T1 T2 T3, subtype T1 T2 -> subtype T2 T3 -> subtype T1 T3.
 Proof.
   intros T1 T2 T3.
@@ -101,10 +119,14 @@ Proof.
   induction T2 ; intros ; inv H ; try solve by inversion ; try (inv H0) ; eauto.
 Qed.
 
+(* relating the ordering on trust annotations and the least upper bound function result *)
+
 Remark sec_ordering_lub : forall s s', sec_ordering s (lub_secty s' s).
 Proof with eauto.
   intros s s' ; destruct s ; destruct s' ...
 Qed.
+
+(* relating the subtype relation and the update of a trust annotation of a given type *)
 
 Remark update_secty__subtype : forall T s, subtype T (update_secty T s).
 Proof with eauto.
@@ -113,6 +135,8 @@ Proof with eauto.
   apply s_arrow ...
   apply sec_ordering_lub.
 Qed.
+
+(* more properties about updating/getting a trust annotations and the ordering relations *)
 
 Remark update_secty_ident : forall T s, update_secty T s = update_secty (update_secty T s) s.
 Proof.

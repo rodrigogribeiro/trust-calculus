@@ -1,3 +1,6 @@
+(* this file defines a type that represents a type context
+   as a finite map of identifiers and types *)
+
 Require Import Utils Ty.
 
 (** definition of finite maps as a list of pairs **)
@@ -21,13 +24,16 @@ Fixpoint lookup {A : Type} (x : id) (gamma : finite_map A) : option A :=
                        else lookup x gam
   end.
 
-(** Predicate for typing contexts **)
+(** in_domain predicate i m is provable if the identifier i has some entry on 
+    context m **)
 
 Inductive in_domain : id -> finite_map ty -> Prop :=
   | in_here : forall i t g, in_domain i ((i,t) :: g)
   | in_latter : forall i i' t' g, i <> i' -> in_domain i g -> in_domain i ((i',t')::g).
 
 Hint Constructors in_domain.
+
+(* some facts of in_domain predicate *)
 
 Remark in_domain_nil : forall i, ~ in_domain i nil.
 Proof.
@@ -50,11 +56,15 @@ Qed.
 
 Hint Resolve in_domain_nil in_dom_ex.
 
+(* a finite map is a context only if doesn't have any repeated identifiers *)
+
 Inductive context : finite_map ty -> Prop :=
   | ctx_nil  : context nil
   | ctx_cons : forall i t g, context g -> ~ in_domain i g -> context ((i,t) :: g).
 
 Hint Constructors context.
+
+(* some lemmas about context property of finite maps *)
 
 Lemma extend_preserves_context : forall i t g, context g -> context (extend i t g).
 Proof.
@@ -65,6 +75,8 @@ Proof.
   destruct (in_dom_ex i0 i t g Hc1) ;
      [subst ; elim n ; auto | idtac] ; contradiction.
 Qed.
+
+(* useful lemmas that relate the extend and lookup operation *)
 
 Lemma extend_lookup : forall {A : Type} x (t : A) g, lookup x (extend x t g) = Some t.
 Proof.

@@ -1,3 +1,9 @@
+(* Extracting the certified type checker.
+   We extract the type checker as a Haskell program.
+
+   The extracted code can be found at dist directory.
+ *)
+
 Require Import TypeChecker.
 
 Extraction Language Haskell.
